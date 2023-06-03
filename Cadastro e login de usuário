@@ -1,0 +1,127 @@
+<?php
+// Configurações do banco de dados
+$hostname = 'localhost';
+$username = 'seu_usuario';
+$password = 'sua_senha';
+$database = 'seu_banco_de_dados';
+
+// Conexão com o banco de dados
+$conexao = new mysqli($hostname, $username, $password, $database);
+if ($conexao->connect_error) {
+    die("Falha na conexão com o banco de dados: " . $conexao->connect_error);
+}
+
+// Função para verificar se o usuário está logado
+function verificarLogin()
+{
+    session_start();
+    if (!isset($_SESSION['usuario'])) {
+        header('Location: login.php');
+        exit();
+    }
+}
+
+// Função para criar um novo usuário
+function criarUsuario($usuario, $senha)
+{
+    global $conexao;
+
+    // Verifica se o usuário já existe no banco de dados
+    $consulta = "SELECT * FROM usuarios WHERE usuario = '$usuario'";
+    $resultado = $conexao->query($consulta);
+    if ($resultado->num_rows > 0) {
+        return false; // Usuário já existe
+    }
+
+    // Insere o novo usuário no banco de dados
+    $inserir = "INSERT INTO usuarios (usuario, senha) VALUES ('$usuario', '$senha')";
+    if ($conexao->query($inserir) === true) {
+        return true; // Novo usuário criado com sucesso
+    } else {
+        return false; // Erro ao criar usuário
+    }
+}
+
+// Função para verificar as credenciais do usuário
+function verificarCredenciais($usuario, $senha)
+{
+    global $conexao;
+
+    // Consulta SQL para verificar as credenciais
+    $consulta = "SELECT * FROM usuarios WHERE usuario = '$usuario' AND senha = '$senha'";
+    $resultado = $conexao->query($consulta);
+
+    // Verifica se há algum resultado retornado
+    if ($resultado->num_rows > 0) {
+        return true; // Credenciais válidas
+    } else {
+        return false; // Credenciais inválidas
+    }
+}
+
+// Processamento do formulário de cadastro
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cadastro'])) {
+    $usuario = $_POST['usuario'];
+    $senha = $_POST['senha'];
+
+    $criacaoUsuario = criarUsuario($usuario, $senha);
+
+    if ($criacaoUsuario) {
+        $mensagemCadastro = 'Usuário criado com sucesso!';
+    } else {
+        $mensagemCadastro = 'Falha ao criar usuário. Por favor, tente novamente.';
+    }
+}
+
+// Processamento do formulário de login
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
+    $usuario = $_POST['usuario'];
+    $senha = $_POST['senha'];
+
+    if (verificarCredenciais($usuario, $senha)) {
+        session_start();
+        $_SESSION['usuario'] = $usuario;
+        header('Location: index.php');
+        exit();
+    } else {
+        $mensagemLogin = 'Credenciais inválidas. Por favor, tente novamente.';
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tela de Cadastro e Login</title>
+</head>
+<body>
+    <h1>Tela de Cadastro e Login</h1>
+
+    <h2>Cadastro</h2>
+    <form method="POST" action="<?php echo $_SERVER['PHP_SELF']; ?>">
+        <input type="hidden" name="cadastro" value="1">
+        <label for="usuario">Usuário:</label>
+        <input type="text" name="usuario" id="usuario" required><br>
+
+        <label for="senha">Senha:</label>
+        <input type="password" name="senha" id="senha" required><br>
+
+        <input type="submit" value="Cadastrar">
+    </form>
+    <?php if (isset($mensagemCadastro)) { echo $mensagemCadastro; } ?>
+
+    <h2>Login</h2>
+    <form method="POST" action="<?php echo $_SERVER['PHP_SELF']; ?>">
+        <input type="hidden" name="login" value="1">
+        <label for="usuario">Usuário:</label>
+        <input type="text" name="usuario" id="usuario" required><br>
+
+        <label for="senha">Senha:</label>
+        <input type="password" name="senha" id="senha" required><br>
+
+        <input type="submit" value="Login">
+    </form>
+    <?php if (isset($mensagemLogin)) { echo $mensagemLogin; } ?>
+
+</body>
+</html>
